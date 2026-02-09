@@ -50,11 +50,9 @@ LOGS_DIR = Path.home() / ".config" / "teddy_browser" / "logs"
 
 
 def auto_screenshot(page, label: str = "") -> str:
-    """スクリーンショットを撮って保存パスを返す。"""
+    """スクリーンショットを撮る。常に latest.png を上書き。"""
     SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    suffix = f"_{label}" if label else ""
-    path = SCREENSHOTS_DIR / f"ss_{timestamp}{suffix}.png"
+    path = SCREENSHOTS_DIR / "latest.png"
     page.screenshot(path=str(path), full_page=False)
     return str(path)
 
@@ -77,7 +75,8 @@ def execute_command(cmd: str, page, context, profile_name: str, state: dict) -> 
             print("  press:<key>        キー送信（Enter,Tab,Escape等）")
             print("  scroll:<dir>       スクロール（up/down/top/bottom）")
             print("  wait:<ms>          待機")
-            print("  ss                 スクリーンショット")
+            print("  ss                 スクリーンショット（latest.png上書き）")
+            print("  save_ss:<name>     名前付きスクショ保存")
             print("  title              タイトル＆URL")
             print("  html               主要テキスト抽出")
             print("  links              リンク一覧")
@@ -175,8 +174,19 @@ def execute_command(cmd: str, page, context, profile_name: str, state: dict) -> 
             print(f"WAITED: {ms}ms")
 
         elif cmd in ("screenshot", "ss"):
+            # 名前なし → latest.png
             path = auto_screenshot(page)
             print(f"SCREENSHOT: {path}")
+
+        elif cmd.startswith("save_ss:"):
+            # 名前付き保存（永続）
+            name = cmd[8:].strip().replace("/", "_").replace(" ", "_")
+            if not name:
+                name = datetime.now().strftime("%Y%m%d_%H%M%S")
+            SCREENSHOTS_DIR.mkdir(parents=True, exist_ok=True)
+            path = SCREENSHOTS_DIR / f"{name}.png"
+            page.screenshot(path=str(path), full_page=False)
+            print(f"SAVED_SS: {path}")
 
         elif cmd == "title":
             print(f"TITLE: {page.title()}")
