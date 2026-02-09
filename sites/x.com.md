@@ -5,14 +5,33 @@
 - **アカウント:** @teddy_bonsoleil（シャドウバン中）、@mythOfTragedy（運用中）
 - **認証:** Cookie認証（`~/.config/twitter/credentials`）
 
-## セレクタ（TODO）
-- ツイート入力欄:
-- ツイートボタン:
-- 引用RT:
-- リプライ:
-- いいね:
-- リツイート:
-- フォローボタン:
+## セレクタ
+
+| 要素 | セレクタ |
+|---|---|
+| ツイート入力欄 | `[data-testid="tweetTextarea_0"]` |
+| ポストするボタン | `[data-testid="tweetButtonInline"]` |
+| サイドバーのポストボタン | `[data-testid="SideNav_NewTweet_Button"]` |
+| アカウント切替 | `[data-testid="SideNav_AccountSwitcher_Button"]` |
+| 引用RT | TODO |
+| リプライ | TODO |
+| いいね | TODO |
+| リツイート | TODO |
+| フォローボタン | TODO |
+
+### 投稿手順（検証済み ✅）
+```
+url:https://x.com/home
+wait:3000
+select:[data-testid="tweetTextarea_0"]
+input:{投稿テキスト}
+wait:1000
+click:[data-testid="tweetButtonInline"]
+wait:5000
+```
+- EC2ヘッドレスから投稿成功（2026-02-09）
+- 344/226エラーなし
+- Cookie（auth_token + ct0）をプロファイルに注入して使用
 
 ## 主要ページ
 
