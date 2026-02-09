@@ -75,10 +75,55 @@ c = next(c["value"] for c in p["cookies"] if c["name"] == "_note_session_v5")
 (Path.home()/".config/note/cookies").write_text(c)
 ```
 
-## 記事ページのセレクタ（TODO）
-- いいねボタン:
-- コメント欄:
-- フォローボタン:
+## 記事ページの操作
+
+### コメント投稿
+⚠️ `paste:` はnoteのtextareaに反映されない。JS直接書き込みが必要。
+
+```
+# 1. 記事ページを開く
+url:https://note.com/{user}/n/{key}
+wait:5000
+
+# 2. ページ最下部にスクロール（コメント欄を表示）
+eval:window.scrollTo(0, document.body.scrollHeight)
+wait:2000
+
+# 3. コメント欄をクリック（フォーカス）
+click:textarea.o-noteCommentForm__inputMessage
+wait:500
+
+# 4. JS nativeInputValueSetter でテキスト入力（paste:は効かない）
+eval:(() => { const ta = document.querySelector('textarea.o-noteCommentForm__inputMessage'); const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set; setter.call(ta, '{コメント本文}'); ta.dispatchEvent(new Event('input', { bubbles: true })); return ta.value.length; })()
+wait:1000
+
+# 5. 送信ボタン（aria-label="送信"の丸いボタン）をクリック
+eval:(() => { const btn = Array.from(document.querySelectorAll('button')).find(b => b.getAttribute('aria-label') === '送信'); if(btn && !btn.disabled) { btn.click(); return 'SENT'; } return 'FAILED'; })()
+wait:3000
+```
+
+### セレクタまとめ
+| 要素 | セレクタ / 方法 |
+|---|---|
+| コメント欄 | `textarea.o-noteCommentForm__inputMessage` |
+| 送信ボタン | `button[aria-label="送信"]`（eval経由でクリック） |
+| キャンセルボタン | `button[aria-label="キャンセル"]` |
+| スキ（いいね）ボタン | `button.o-noteLikeV3__iconButton`（複数あり、記事本文直後のものを使う） |
+| スキ取り消し | テキスト「スキを取り消す」のaria-labelで判定 |
+| フォローボタン | `button:has-text("フォロー")` / `button.a-button:has-text("フォロー中")` |
+
+### いいね（スキ）
+```
+# 記事ページでスクロール後
+eval:(() => { const btn = document.querySelector('button.o-noteLikeV3__iconButton'); if(btn) { btn.click(); return 'LIKED'; } return 'NOT FOUND'; })()
+wait:2000
+```
+
+### 注意事項
+- **コメント入力**: `paste:` / `type:` ではtextareaに反映されない場合あり。`nativeInputValueSetter` + `input` イベント発火が確実
+- **送信ボタン**: CSSクラスなし、`aria-label="送信"` で特定。`click:` セレクタでは拾えない → `eval:` 必須
+- **コメントレート制限**: 15秒以上間隔を空ける（429回避）
+- **スキボタン**: ページに複数存在（記事末尾 + サイドバー等）。最初の1つをクリックすれば全連動
 
 ## メモ
 - セッションはプロファイル `note_teddy` に保存済み
