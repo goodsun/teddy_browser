@@ -72,6 +72,7 @@ def execute_command(cmd: str, page, context, profile_name: str, state: dict) -> 
             print("  select:<selector>  要素選択＆テキスト表示")
             print("  input:<text>       選択要素にテキスト入力")
             print("  type:<text>        キーボード入力（フォーカス不問）")
+            print("  paste:<text>       ペースト（contenteditable対応、高速）")
             print("  press:<key>        キー送信（Enter,Tab,Escape等）")
             print("  scroll:<dir>       スクロール（up/down/top/bottom）")
             print("  wait:<ms>          待機")
@@ -140,6 +141,24 @@ def execute_command(cmd: str, page, context, profile_name: str, state: dict) -> 
                 page.wait_for_timeout(random.randint(50, 150))
             print(f"TYPED: {len(text)} chars")
             path = auto_screenshot(page, "type")
+            print(f"SCREENSHOT: {path}")
+
+        elif cmd.startswith("paste:"):
+            text = cmd[6:].replace("\\n", "\n")
+            # ClipboardEvent paste — contenteditable (X, note.com等) 対応
+            page.evaluate("""(text) => {
+                const el = document.activeElement;
+                if (!el) return;
+                const dt = new DataTransfer();
+                dt.setData('text/plain', text);
+                const event = new ClipboardEvent('paste', {
+                    clipboardData: dt, bubbles: true, cancelable: true
+                });
+                el.dispatchEvent(event);
+            }""", text)
+            page.wait_for_timeout(800)
+            print(f"PASTED: {len(text)} chars")
+            path = auto_screenshot(page, "paste")
             print(f"SCREENSHOT: {path}")
 
         elif cmd.startswith("press:"):
@@ -289,6 +308,7 @@ def main():
             if fpath.exists():
                 print(f"RUNNING_FILE: {args.f}")
                 lines = fpath.read_text().splitlines()
+                file_state = {"selected": None}
                 i = 0
                 while i < len(lines):
                     line = lines[i].strip()
@@ -307,7 +327,7 @@ def main():
                             i += 1
                         line = "input:" + "\n".join(body)
                     print(f"CMD: {line}")
-                    if not execute_command(line, page, context, profile_name, {"selected": None}):
+                    if not execute_command(line, page, context, profile_name, file_state):
                         break
             else:
                 print(f"FILE_NOT_FOUND: {args.f}")
