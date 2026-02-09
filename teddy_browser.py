@@ -315,17 +315,20 @@ def main():
                     i += 1
                     if not line or line.startswith("#"):
                         continue
-                    # ヒアドキュメント
-                    if line.startswith("input:<<"):
-                        delimiter = line[8:].strip()
-                        body = []
-                        while i < len(lines):
-                            if lines[i].strip() == delimiter:
+                    # ヒアドキュメント（input:<<EOF / paste:<<EOF）
+                    for prefix in ("input:<<", "paste:<<"):
+                        if line.startswith(prefix):
+                            delimiter = line[len(prefix):].strip()
+                            base_cmd = prefix.split(":")[0] + ":"
+                            body = []
+                            while i < len(lines):
+                                if lines[i].strip() == delimiter:
+                                    i += 1
+                                    break
+                                body.append(lines[i])
                                 i += 1
-                                break
-                            body.append(lines[i])
-                            i += 1
-                        line = "input:" + "\n".join(body)
+                            line = base_cmd + "\n".join(body)
+                            break
                     print(f"CMD: {line}")
                     if not execute_command(line, page, context, profile_name, file_state):
                         break
@@ -338,10 +341,27 @@ def main():
             print("READY: Waiting for commands on stdin")
             sys.stdout.flush()
 
-            for line in sys.stdin:
-                cmd = line.strip()
+            stdin_lines = list(sys.stdin)
+            i = 0
+            while i < len(stdin_lines):
+                cmd = stdin_lines[i].strip()
+                i += 1
                 if not cmd or cmd.startswith("#"):
                     continue
+                # ヒアドキュメント対応（input:<<EOF / paste:<<EOF）
+                for prefix in ("input:<<", "paste:<<"):
+                    if cmd.startswith(prefix):
+                        delimiter = cmd[len(prefix):].strip()
+                        base_cmd = prefix.split(":")[0] + ":"  # "input:" or "paste:"
+                        body = []
+                        while i < len(stdin_lines):
+                            if stdin_lines[i].strip() == delimiter:
+                                i += 1
+                                break
+                            body.append(stdin_lines[i].rstrip("\n"))
+                            i += 1
+                        cmd = base_cmd + "\n".join(body)
+                        break
                 print(f"CMD: {cmd}")
                 sys.stdout.flush()
                 if not execute_command(cmd, page, context, profile_name, state):
